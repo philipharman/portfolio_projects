@@ -1,0 +1,28 @@
+# Welcome to your prefect.yaml file! You can use this file for storing and managing
+# configuration for deploying your flows. We recommend committing this file to source
+# control along with your flow code.
+
+# Generic metadata about this project
+name: sdg_legislation
+prefect-version: 3.4.22
+
+# pull section allows you to provide instructions for cloning this project in remote locations
+pull:
+- prefect.deployments.steps.git_clone:
+    id: clone-step
+    repository: https://github.com/philipharman/sdg_legislation.git
+    branch: main
+    access_token: null
+- prefect.deployments.steps.pip_install_requirements:
+    directory: "{{ clone-step.directory }}" # `clone-step` is a user-provided `id` field
+    requirements_file: requirements.txt
+
+# the deployments section allows you to provide configuration for deploying flows
+deployments:
+- name: weather-deployment-test
+  entrypoint: weather.py:fetch_weather
+  work_pool:
+    name: my-work-pool
+    work_queue_name: null
+    job_variables: {}
+  schedule: {}

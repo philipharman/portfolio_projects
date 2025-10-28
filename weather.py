@@ -3,7 +3,7 @@ import requests
 from prefect import flow
 
 
-@flow(log_prints=True)
+@flow(name = "weather flow", log_prints=True)
 def fetch_weather(lat: float = 38.9, lon: float = -77.0):
     weather = requests.get(
         "https://api.open-meteo.com/v1/forecast/",
