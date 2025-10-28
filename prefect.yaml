@@ -3,26 +3,33 @@
 # control along with your flow code.
 
 # Generic metadata about this project
-name: sdg_legislation
+name: portfolio_projects
 prefect-version: 3.4.22
 
-# pull section allows you to provide instructions for cloning this project in remote locations
+
+build:
+- prefect.deployments.steps.git_clone:
+    id: clone-step
+    repository: https://github.com/philipharman/sdg_legislation.git
+    branch: main
+- prefect.deployments.steps.pip_install_requirements:
+    directory: "{{ clone-step.repository }}" 
+    requirements_file: requirements.txt
+
+
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
     repository: https://github.com/philipharman/sdg_legislation.git
     branch: main
-    access_token: null
-- prefect.deployments.steps.pip_install_requirements:
-    directory: "{{ clone-step.directory }}" # `clone-step` is a user-provided `id` field
-    requirements_file: requirements.txt
 
-# the deployments section allows you to provide configuration for deploying flows
+
+
 deployments:
 - name: weather-deployment-test
   entrypoint: weather.py:fetch_weather
   work_pool:
     name: my-work-pool
-    work_queue_name: null
+    work_queue_name: default
     job_variables: {}
   schedule: {}
