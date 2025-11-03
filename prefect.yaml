@@ -9,24 +9,24 @@ prefect-version: 3.4.22
 
 build:
 - prefect.deployments.steps.git_clone:
-    id: clone-step
-    repository: https://github.com/philipharman/sdg_legislation.git
+    id: build-step
+    repository: https://github.com/philipharman/portfolio_projects.git
     branch: main
 - prefect.deployments.steps.pip_install_requirements:
-    directory: "{{ clone-step.repository }}" 
+    directory: "{{ build-step.repository }}" 
     requirements_file: requirements.txt
 
 
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
-    repository: https://github.com/philipharman/sdg_legislation.git
+    repository: https://github.com/philipharman/portfolio_projects.git
     branch: main
 
 
 
 deployments:
-- name: weather-deployment-test
+- name: weather-deployment
   entrypoint: weather.py:fetch_weather
   work_pool:
     name: my-work-pool
