@@ -8,13 +8,15 @@ prefect-version: 3.4.22
 
 
 build:
-- prefect.deployments.steps.git_clone:
-    id: build-step
-    repository: https://github.com/philipharman/portfolio_projects.git
-    branch: main
-- prefect.deployments.steps.pip_install_requirements:
-    directory: "{{ build-step.repository }}" 
-    requirements_file: requirements.txt
+  - prefect_docker.deployments.steps.build_docker_image:
+      image_name: philipharman/portfolio-image
+      tag: latest
+      dockerfile: auto
+      nocache: true           # Disable Docker layer caching (--no-cache)
+      pull: true              # Always pull the latest base image
+      platform: linux/amd64   # Specify target platform
+      buildargs:              # Pass build-time variables
+        MY_ARG: value
 
 
 pull:
