@@ -1,4 +1,4 @@
-FROM prefecthq/prefect:3.4.11-python3.12-kubernetes
+FROM python:3.12-slim
 
 RUN pip install --no-cache-dir \
     pandas scikit-learn numpy scipy spacy matplotlib seaborn nltk bs4 prefect_aws \
