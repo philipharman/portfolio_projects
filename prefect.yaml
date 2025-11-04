@@ -22,12 +22,13 @@ pull:
     branch: main
 
 
-
 deployments:
+
 - name: weather-deployment
   entrypoint: weather.py:fetch_weather
   work_pool:
     name: my-work-pool
     work_queue_name: default
-    job_variables: {}
+    job_variables:
+      image: philipharman/portfolio-image
   schedule: {}
