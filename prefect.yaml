@@ -16,8 +16,4 @@ deployments:
   work_pool:
     name: my-work-pool
     work_queue_name: default
-    infrastructure:
-      type: process
-      pip_requirements:
-        - requests
   schedule: {}
