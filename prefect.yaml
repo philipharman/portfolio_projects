@@ -6,16 +6,15 @@ pull:
     id: clone-step
     repository: https://github.com/philipharman/portfolio_projects.git
     branch: main
-- prefect.deployments.steps.pip_install_requirements:
-    directory: "{{ clone-step.directory }}"
 
 deployments:
-
 - name: weather-deployment
   entrypoint: weather.py:fetch_weather
   work_pool:
     name: my-work-pool
     work_queue_name: default
-    job_variables:
-      image: philipharman/portfolio-image:latest
+    infrastructure:
+      type: process
+      pip_requirements:
+        - requests
   schedule: {}
