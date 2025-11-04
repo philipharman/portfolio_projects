@@ -8,7 +8,6 @@ pull:
     branch: main
 - prefect.deployments.steps.pip_install_requirements:
     directory: "{{ clone-step.directory }}"
-    requirements_file: requirements.txt
 
 deployments:
 
@@ -17,4 +16,6 @@ deployments:
   work_pool:
     name: my-work-pool
     work_queue_name: default
+    job_variables:
+      image: philipharman/portfolio-image:latest
   schedule: {}
