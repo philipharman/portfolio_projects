@@ -11,11 +11,8 @@ build:
   - prefect_docker.deployments.steps.build_docker_image:
       image_name: philipharman/portfolio-image
       tag: latest
-      dockerfile: ./Dockerfile    # <-- explicit path
-      context: .                  # <-- specify context directory
-      nocache: true
+      dockerfile: auto
       pull: true
-      platform: linux/amd64
 
 
 pull:
