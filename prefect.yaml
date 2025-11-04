@@ -1,28 +1,14 @@
-# Welcome to your prefect.yaml file! You can use this file for storing and managing
-# configuration for deploying your flows. We recommend committing this file to source
-# control along with your flow code.
-
-# Generic metadata about this project
 name: portfolio_projects
 prefect-version: 3.4.22
-
-
-build:
-  - prefect_docker.deployments.steps.build_docker_image:
-      id: build-image
-      requires: prefect-docker>=0.6.0
-      image_name: philipharman/portfolio-image
-      tag: latest
-      dockerfile: auto
-      pull: true
-
 
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
     repository: https://github.com/philipharman/portfolio_projects.git
     branch: main
-
+- prefect.deployments.steps.pip_install_requirements:
+    directory: "{{ clone-step.directory }}"
+    requirements_file: requirements.txt
 
 deployments:
 
@@ -31,6 +17,4 @@ deployments:
   work_pool:
     name: my-work-pool
     work_queue_name: default
-    job_variables:
-      image: "{{ build-image.image }}"
   schedule: {}
