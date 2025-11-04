@@ -9,6 +9,8 @@ prefect-version: 3.4.22
 
 build:
   - prefect_docker.deployments.steps.build_docker_image:
+      id: build-image
+      requires: prefect-docker>=0.6.0
       image_name: philipharman/portfolio-image
       tag: latest
       dockerfile: auto
@@ -30,5 +32,5 @@ deployments:
     name: my-work-pool
     work_queue_name: default
     job_variables:
-      image: philipharman/portfolio-image
+      image: "{{ build-image.image }}"
   schedule: {}
