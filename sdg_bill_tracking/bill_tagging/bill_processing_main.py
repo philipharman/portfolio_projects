@@ -16,6 +16,8 @@ import asyncio
 def fetch_legiscan_dataset_list(legiscan_api_key):
     """
     Fetches list of currently available session datasets for all legislative bodies in current year.
+
+    NOTE: When opening this up to states, just need to remove "state=US".
     """
     current_year = str(datetime.date.today().year)
     dataset_list_url = f'https://api.legiscan.com/?key={legiscan_api_key}&op=getDatasetList&year={current_year}&state=US'

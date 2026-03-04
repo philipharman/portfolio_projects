@@ -31,11 +31,11 @@ def get_tagged_bills():
 
 
 @task(name = 'Tag new bills')
-def tag_new_bills(bills_dataframe, SDGS, threshold=0.3, top_k=3):
+def tag_new_bills(bills_dataframe, SDGS, threshold=0.35, top_k=3):
 
     # Generate embeddings
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L12-v1')
-    SDG_embeddings = model.encode(SDGS.apply(lambda row: '\n'.join(list(OrderedSet([row['Target'].strip(), row['Indicators'].strip()]))), axis = 1))
+    SDG_embeddings = model.encode(SDGS.Target)
     SDGS['embedding'] = list(SDG_embeddings)
     bill_embeddings = model.encode(bills_dataframe.apply(lambda row: '\n'.join(list(OrderedSet([row['title'].strip(), row['description'].strip()]))), axis = 1))
     bills_dataframe['embedding'] = list(bill_embeddings)
@@ -49,6 +49,7 @@ def tag_new_bills(bills_dataframe, SDGS, threshold=0.3, top_k=3):
 
     tagged_sdgs = []
     tagged_targets = []
+    tagged_targets_confidence = []
 
     for row in similarity_matrix:
         # Get indices sorted descending
@@ -63,13 +64,17 @@ def tag_new_bills(bills_dataframe, SDGS, threshold=0.3, top_k=3):
         if filtered:
             tagged_sdgs.append(list(set(SDGS.iloc[filtered]["SDG No."])))
             tagged_targets.append(list(set(SDGS.iloc[filtered]["Target No."])))
+            tagged_targets_confidence.append([float(row[idx]) for idx in filtered])
         else:
             tagged_sdgs.append([])
             tagged_targets.append([])
+            tagged_targets_confidence.append([])
 
     bills_dataframe["tagged_sdgs"] = tagged_sdgs
     bills_dataframe["tagged_targets"] = tagged_targets
-    return bills_dataframe.drop(columns = 'embedding')
+    bills_dataframe["tagged_targets_confidence"] = tagged_targets_confidence
+
+    return bills_dataframe.drop(columns='embedding')
 
 
 @task(name = "Bill tagging main")
@@ -80,7 +85,7 @@ def bill_tagging_main(bills_dataframe):
     tagged_bills = get_tagged_bills()
 
     # Apply tags where already available in S3
-    for col in ['tagged_sdgs', 'tagged_targets']:
+    for col in ['tagged_sdgs', 'tagged_targets', 'tagged_targets_confidence']:
         bills_dataframe[col] = bills_dataframe.bill_file.apply(lambda x: tagged_bills.get(x, {}).get(col))
 
     # Apply tags to new bills
