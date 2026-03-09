@@ -7,12 +7,13 @@ pull:
     repository: https://github.com/philipharman/portfolio_projects.git
     branch: main
 - prefect.deployments.steps.pip_install_requirements:
-    directory: "{{ clone-step.directory }}"    
+    directory: "{{ clone-step.directory }}"
     requirements_file: requirements.txt
 
 deployments:
 - name: weather-deployment
   entrypoint: sdg_bill_tracking/testing/weather.py:fetch_weather
+  path: "{{ clone-step.directory }}"
   work_pool:
     name: my-work-pool
     work_queue_name: default
