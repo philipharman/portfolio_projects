@@ -12,7 +12,7 @@ pull:
 
 deployments:
 - name: weather-deployment
-  entrypoint: sdg_bill_tracking/testing/weather.py;fetch_weather
+  entrypoint: sdg_bill_tracking/testing/weather.py:fetch_weather
   work_pool:
     name: my-work-pool
     work_queue_name: default
