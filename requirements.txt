@@ -4,3 +4,4 @@ pandas==2.3.3
 requests==2.32.5
 scikit-learn==1.6.1
 sentence-transformers==3.4.1
+prefect_aws==0.6.0
