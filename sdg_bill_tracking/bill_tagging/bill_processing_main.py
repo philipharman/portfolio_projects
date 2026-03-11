@@ -1,4 +1,4 @@
-from utils.s3_utils import connect_s3, upload_s3, download_s3
+from utils.prefect_s3_utils import connect_s3, upload_s3, download_s3
 from prefect import flow, task
 from prefect.blocks.system import Secret
 from sdg_bill_tracking.bill_tagging.bill_tagging_utils import bill_tagging_main

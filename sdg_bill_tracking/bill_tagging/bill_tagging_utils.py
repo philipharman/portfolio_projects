@@ -2,7 +2,7 @@ from ordered_set import OrderedSet
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 import numpy as np
-from utils.s3_utils import connect_s3, download_s3
+from utils.prefect_s3_utils import connect_s3, download_s3
 from prefect import task
 import pandas as pd
 
