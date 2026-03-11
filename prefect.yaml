@@ -8,7 +8,7 @@ pull:
     branch: main
 - prefect.deployments.steps.pip_install_requirements:
     directory: "{{ clone-step.directory }}"
-    requirements_file: requirements.txt
+    requirements_file: prefect_requirements.txt
 
 deployments:
 
