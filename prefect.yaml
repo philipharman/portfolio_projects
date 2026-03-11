@@ -12,14 +12,6 @@ pull:
 
 deployments:
 
-- name: weather-deployment
-  entrypoint: sdg_bill_tracking/testing/weather.py:fetch_weather
-  path: "{{ clone-step.directory }}"
-  work_pool:
-    name: my-work-pool
-    work_queue_name: default
-  schedule: {}
-
 - name: sdg-bill-tagging
   entrypoint: sdg_bill_tracking/bill_tagging/bill_processing_main.py:bill_processing_main
   path: "{{ clone-step.directory }}"
