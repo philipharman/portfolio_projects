@@ -2,19 +2,19 @@ import pandas as pd
 import streamlit as st
 import ast
 
-
+@st.cache_data()
 def load_sdgs():
-    sdgs = pd.read_csv('sdg_indicators_local.csv')
-    sdgs = sdgs.sort_values(by = ['SDG No.', 'Target No.'])
+    sdgs = pd.read_csv('https://portfolio-project-files.s3.eu-west-1.amazonaws.com/sdg-bill-tracking/sdg_indicators_corpus.csv')
     sdg_dict = sdgs[['SDG No.', 'SDG']].drop_duplicates().set_index('SDG No.').to_dict()['SDG']
     target_dict = sdgs[['Target No.', 'Target']].drop_duplicates().set_index('Target No.').to_dict()['Target']
     return sdgs, sdg_dict, target_dict
 
 
+@st.cache_data()
 def load_format_tagged_bills(sdg_dict, target_dict):
 
     # Load and format
-    bills = pd.read_csv('tagged_bills_local.csv')
+    bills = pd.read_csv('https://portfolio-project-files.s3.eu-west-1.amazonaws.com/sdg-bill-tracking/tagged_bills.csv')
     for col in ['sponsors', 'tagged_sdgs', 'tagged_targets']:
         bills[col] = bills[col].apply(lambda x: ast.literal_eval(x))
 
@@ -55,6 +55,7 @@ def main():
 
     # Header
     st.header('SDG Tracking')
+    st.dataframe(sdgs)
 
     # SDG / Target filter
     selected_sdgs, selected_targets = build_sdg_filters(sdgs)
