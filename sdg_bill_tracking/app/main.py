@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import ast
 
-@st.cache_data()
+@st.cache_data(show_spinner=False)
 def load_sdgs():
     sdgs = pd.read_csv('https://portfolio-project-files.s3.eu-west-1.amazonaws.com/sdg-bill-tracking/sdg_indicators_corpus.csv')
     sdg_dict = sdgs[['SDG No.', 'SDG']].drop_duplicates().set_index('SDG No.').to_dict()['SDG']
@@ -10,7 +10,7 @@ def load_sdgs():
     return sdgs, sdg_dict, target_dict
 
 
-@st.cache_data()
+@st.cache_data(show_spinner=False)
 def load_format_tagged_bills(sdg_dict, target_dict):
 
     # Load and format
