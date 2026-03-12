@@ -12,13 +12,9 @@ def load_sdgs():
 
 @st.cache_data(show_spinner=False)
 def load_format_tagged_bills(sdg_dict, target_dict):
-
-    # Load and format
     bills = pd.read_csv('https://portfolio-project-files.s3.eu-west-1.amazonaws.com/sdg-bill-tracking/tagged_bills.csv')
     for col in ['sponsors', 'tagged_sdgs', 'tagged_targets']:
         bills[col] = bills[col].apply(lambda x: ast.literal_eval(x))
-
-    # Add tagged text
     bills['tagged_sdgs_text'] = bills.tagged_sdgs.apply(lambda x: [sdg_dict[i] for i in x] if type(x) is list else None)
     bills['tagged_targets_text'] = bills.tagged_targets.apply(lambda x: [target_dict[i] for i in x] if type(x) is list else None)
     return bills
