@@ -65,6 +65,10 @@ async def bill_processing_main() -> None:
         set(tagged_bills.dataset_hash)
     )
 
+    if len(new_bills) == 0:
+        print("No new bills to process. Exiting.")
+        return
+
     # Apply SDG tags to the newly fetched bills and merge with existing tagged bills
     tagged_bills_updated = bill_tagging_main(new_bills, tagged_bills)
 

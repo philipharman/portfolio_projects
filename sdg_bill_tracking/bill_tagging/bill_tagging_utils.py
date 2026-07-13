@@ -1,10 +1,10 @@
-from ordered_set import OrderedSet
-from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
+import faiss
 import numpy as np
-from utils.prefect_s3_utils import connect_s3, download_s3
-from prefect import task
 import pandas as pd
+from ordered_set import OrderedSet
+from prefect import task
+from sentence_transformers import SentenceTransformer
+from utils.prefect_s3_utils import connect_s3, download_s3
 
 
 @task(name="Get SDG Corpus")
@@ -25,105 +25,95 @@ def get_sdg_corpus() -> pd.DataFrame:
     return SDGS
 
 
-@task(name='Tag new bills')
-def tag_new_bills(
+@task(name="Tag Relevance")
+def tag_relevance(
     new_bills: pd.DataFrame,
     SDGS: pd.DataFrame,
     threshold: float = 0.35,
-    top_k: int = 3
 ) -> pd.DataFrame:
     """
-    Assigns SDG tags to untagged bills using sentence embedding cosine similarity.
+    Assign the single most relevant SDG target to each bill using FAISS
+    cosine similarity search.
 
-    For each bill, computes the cosine similarity between the bill's embedding
-    and each SDG target embedding. Assigns the top-k SDG targets whose similarity
-    exceeds the given threshold.
-
-    Args:
-        new_bills (pd.DataFrame): DataFrame of untagged bills. Must contain
-                                  'title' and 'description' columns.
-        SDGS (pd.DataFrame): SDG reference DataFrame with 'Target', 'SDG No.',
-                             and 'Target No.' columns.
-        threshold (float): Minimum cosine similarity score for a tag to be assigned.
-                           Defaults to 0.35.
-        top_k (int): Maximum number of SDG targets to assign per bill.
-                     Defaults to 3.
-
-    Returns:
-        pd.DataFrame: The input DataFrame with three new columns added:
-                      - 'tagged_sdgs': list of matched SDG numbers
-                      - 'tagged_targets': list of matched SDG target numbers
-                      - 'tagged_targets_confidence': list of similarity scores for matched targets
-                      The temporary 'embedding' column is dropped before returning.
+    Adds:
+        - tagged_sdg
+        - tagged_target
+        - tagged_target_confidence
     """
-    # Generate sentence embeddings for SDG targets and bill text
-    model = SentenceTransformer('sentence-transformers/all-MiniLM-L12-v1')
-    SDG_embeddings = model.encode(SDGS.Target)
-    SDGS['embedding'] = list(SDG_embeddings)
 
-    # Combine bill title and description into a single deduplicated string per bill
-    bill_embeddings = model.encode(
-        new_bills.apply(
-            lambda row: '\n'.join(list(OrderedSet([row['title'].strip(), row['description'].strip()]))),
-            axis=1
-        )
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L12-v1")
+
+    # Encode SDG targets
+    sdg_embeddings = model.encode(
+        SDGS["Target"].tolist(),
+        convert_to_numpy=True,
+    ).astype("float32")
+
+    # Normalize for cosine similarity
+    faiss.normalize_L2(sdg_embeddings)
+
+    # Build FAISS index (inner product == cosine similarity after normalization)
+    index = faiss.IndexFlatIP(sdg_embeddings.shape[1])
+    index.add(sdg_embeddings)
+
+    # Encode bills
+    bill_text = new_bills.apply(
+        lambda row: "\n".join(
+            OrderedSet(
+                [
+                    row["title"].strip(),
+                    row["description"].strip(),
+                ]
+            )
+        ),
+        axis=1,
     )
-    new_bills['embedding'] = list(bill_embeddings)
 
-    # Stack embeddings into matrices for batch similarity computation
-    sdg_matrix = np.vstack(SDGS["embedding"].values)
-    bill_matrix = np.vstack(new_bills["embedding"].values)
+    bill_embeddings = model.encode(
+        bill_text.tolist(),
+        convert_to_numpy=True,
+    ).astype("float32")
 
-    # Compute pairwise cosine similarity between all bills and all SDG targets
-    similarity_matrix = cosine_similarity(bill_matrix, sdg_matrix)
+    faiss.normalize_L2(bill_embeddings)
 
-    tagged_sdgs = []
-    tagged_targets = []
-    tagged_targets_confidence = []
+    # Retrieve the single nearest SDG target
+    scores, indices = index.search(bill_embeddings, k=1)
 
-    for row in similarity_matrix:
-        # Sort SDG target indices by similarity score (descending)
-        sorted_idx = np.argsort(row)[::-1]
+    tagged_sdg = []
+    tagged_target = []
+    tagged_target_confidence = []
 
-        # Keep only indices whose similarity score meets the threshold, up to top_k
-        filtered = [
-            idx for idx in sorted_idx
-            if row[idx] >= threshold
-        ][:top_k]
-
-        if filtered:
-            tagged_sdgs.append(list(set(SDGS.iloc[filtered]["SDG No."])))
-            tagged_targets.append(list(set(SDGS.iloc[filtered]["Target No."])))
-            tagged_targets_confidence.append([float(row[idx]) for idx in filtered])
+    for score, idx in zip(scores[:, 0], indices[:, 0]):
+        if score >= threshold:
+            match = SDGS.iloc[idx]
+            tagged_sdg.append(match["SDG No."])
+            tagged_target.append(match["Target No."])
+            tagged_target_confidence.append(float(score))
         else:
-            # No SDG targets met the threshold for this bill
-            tagged_sdgs.append([])
-            tagged_targets.append([])
-            tagged_targets_confidence.append([])
+            tagged_sdg.append(None)
+            tagged_target.append(None)
+            tagged_target_confidence.append(None)
 
-    new_bills["tagged_sdgs"] = tagged_sdgs
-    new_bills["tagged_targets"] = tagged_targets
-    new_bills["tagged_targets_confidence"] = tagged_targets_confidence
+    new_bills = new_bills.copy()
+    new_bills["tagged_sdg"] = tagged_sdg
+    new_bills["tagged_target"] = tagged_target
+    new_bills["tagged_target_confidence"] = tagged_target_confidence
 
-    return new_bills.drop(columns='embedding')
+    return new_bills
 
 
 @task(name="Bill tagging main")
 def bill_tagging_main(new_bills: pd.DataFrame, tagged_bills: pd.DataFrame) -> pd.DataFrame:
     """
     Orchestrates the bill tagging pipeline, merging new and existing bills.
+    1. Appends new/updated bills to the existing tagged bills dataset.
+    2. Restores existing SDG tags from S3 for bills already processed -> ensures fresh metadata for previously tagged bills.
+    3. Tags relevance for net-new bills
+    4. Tags stance for net-new bills
+    5. Returns a combined dataset with all bills, prioritising newly tagged bills at the top.
 
-    Combines new and previously tagged bills, restores existing tags from S3
-    where available, and applies SDG tagging to any bills not yet tagged.
-
-    Args:
-        new_bills (pd.DataFrame): DataFrame of newly fetched bills, not yet tagged.
-        tagged_bills (pd.DataFrame): DataFrame of previously tagged bills retrieved from S3.
-
-    Returns:
-        pd.DataFrame: A deduplicated DataFrame of all bills with SDG tags applied,
-                      ordered with newly tagged bills first.
     """
+
     # Combine old and new bills, keeping the first occurrence of any duplicate bill files
     all_bills = (
         pd.concat([new_bills, tagged_bills])
@@ -131,15 +121,15 @@ def bill_tagging_main(new_bills: pd.DataFrame, tagged_bills: pd.DataFrame) -> pd
         .reset_index(drop=True)
     )
 
-    # Build a lookup dict from previously tagged bills to restore existing tag columns
+    # Build a lookup dict from previously tagged bills to apply existing tags to bills with metadata updates
     tagged_bills_dict = (
-        tagged_bills[['bill_file', 'tagged_sdgs', 'tagged_targets']]
+        tagged_bills[['bill_file', 'tagged_sdg', 'tagged_target', 'tagged_target_confidence']]
         .set_index('bill_file')
         .to_dict(orient='index')
     )
 
     # Restore existing tags from S3 for bills already processed
-    for col in ['tagged_sdgs', 'tagged_targets', 'tagged_targets_confidence']:
+    for col in ['tagged_sdg', 'tagged_target', 'tagged_target_confidence']:
         all_bills[col] = all_bills.bill_file.apply(
             lambda x: tagged_bills_dict.get(x, {}).get(col)
         )
@@ -148,10 +138,10 @@ def bill_tagging_main(new_bills: pd.DataFrame, tagged_bills: pd.DataFrame) -> pd
     SDGS = get_sdg_corpus()
 
     # Identify bills that still require tagging (no existing SDG tag found)
-    new_bills = all_bills[pd.isna(all_bills.tagged_sdgs)].reset_index(drop=True)
+    new_bills = all_bills[(pd.isna(all_bills.tagged_sdg)) & (all_bills.bill_file.isin(set(new_bills.bill_file)))].reset_index(drop=True)
     if len(new_bills) > 0:
         print(f"Tagging {len(new_bills)} new bills...")
-        new_bills = tag_new_bills(new_bills, SDGS)
+        new_bills = tag_relevance(new_bills, SDGS)
 
     # Merge newly tagged bills back, prioritising them over the untagged rows
     all_bills = pd.concat([new_bills, all_bills])
