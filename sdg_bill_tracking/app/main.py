@@ -13,10 +13,9 @@ def load_sdgs():
 @st.cache_data(show_spinner=False)
 def load_format_tagged_bills(sdg_dict, target_dict):
     bills = pd.read_csv('https://portfolio-project-files.s3.eu-west-1.amazonaws.com/sdg-bill-tracking/tagged_bills.csv')
-    for col in ['sponsors', 'tagged_sdgs', 'tagged_targets']:
-        bills[col] = bills[col].apply(lambda x: ast.literal_eval(x))
-    bills['tagged_sdgs_text'] = bills.tagged_sdgs.apply(lambda x: [sdg_dict[i] for i in x] if type(x) is list else None)
-    bills['tagged_targets_text'] = bills.tagged_targets.apply(lambda x: [target_dict[i] for i in x] if type(x) is list else None)
+    bills['sponsors'] = bills['sponsors'].apply(lambda x: ast.literal_eval(x))
+    bills['tagged_sdg_text'] = bills.tagged_sdg.apply(lambda x: [sdg_dict[i] for i in x] if type(x) is list else None)
+    bills['tagged_target_text'] = bills.tagged_target.apply(lambda x: [target_dict[i] for i in x] if type(x) is list else None)
     return bills
 
 
@@ -36,9 +35,9 @@ def build_sdg_filters(sdgs):
 def apply_sdg_filter(bills, selected_sdgs, selected_targets):
     bills_filtered = bills.copy()
     if selected_sdgs:
-        bills_filtered = bills_filtered[bills_filtered.tagged_sdgs_text.apply(lambda x: len(set(x) & set(selected_sdgs)) > 0)]
+        bills_filtered = bills_filtered[bills_filtered.tagged_sdg_text.apply(lambda x: len(set(x) & set(selected_sdgs)) > 0)]
     if selected_targets:
-        bills_filtered = bills_filtered[bills_filtered.tagged_targets_text.apply(lambda x: len(set(x) & set(selected_targets)) > 0)]
+        bills_filtered = bills_filtered[bills_filtered.tagged_target_text.apply(lambda x: len(set(x) & set(selected_targets)) > 0)]
 
     return bills_filtered
 
