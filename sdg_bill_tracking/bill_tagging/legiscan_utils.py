@@ -25,7 +25,7 @@ def fetch_legiscan_dataset_list(legiscan_api_key: str) -> dict:
     Fetches the list of currently available session datasets for all
     legislative bodies in the current year.
 
-    NOTE: When opening this up to states, just need to remove "state=US".
+    Note - to run task for an individual state, add '&state=CA' (or the desired state code)
 
     Args:
         legiscan_api_key (str): API key for authenticating with the Legiscan API.
@@ -37,7 +37,7 @@ def fetch_legiscan_dataset_list(legiscan_api_key: str) -> dict:
     current_year = str(datetime.date.today().year)
     dataset_list_url = (
         f'https://api.legiscan.com/?key={legiscan_api_key}'
-        f'&op=getDatasetList&year={current_year}&state=US'
+        f'&op=getDatasetList&year={current_year}'
     )
     response = requests.get(dataset_list_url)
     return response.json()
@@ -117,12 +117,14 @@ def fetch_legiscan_datasets(
     """
     bills_dataframe = pd.DataFrame()
 
-    for dataset in available_datasets['datasetlist']:
+    # Filter to datasets with updates available
+    datasets = [dataset for dataset in available_datasets['datasetlist'] if dataset['dataset_hash'] not in processed_dataset_hashes]
+    print(f"Datasets with updates available: {len(datasets)} / {len(available_datasets['datasetlist'])}")
 
-        # Skip datasets that have already been downloaded and processed
-        if dataset['dataset_hash'] in processed_dataset_hashes:
-            print(f"No update available for {dataset['dataset_hash']}, skipping download.")
-            continue
+    for i, dataset in enumerate(datasets):
+
+        # Logging
+        print(f"Downloading dataset {i + 1}/{len(datasets)}: {dataset['dataset_hash']}")
 
         # Fetch the zip file for this legislative session
         session_id = dataset['session_id']

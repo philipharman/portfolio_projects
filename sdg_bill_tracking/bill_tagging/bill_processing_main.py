@@ -37,7 +37,7 @@ def upload_tagged_bills(tagged_bills_updated: pd.DataFrame) -> None:
     upload_s3(s3, 'sdg-bill-tracking/tagged_bills.csv', tagged_bills_updated)
 
 
-@flow(name='Bill Tagging Main', log_prints=True)
+@flow(name='Bill Processing Main', log_prints=True)
 async def bill_processing_main() -> None:
     """
     Main Prefect flow for fetching, tagging, and storing legislative bills.
@@ -48,7 +48,7 @@ async def bill_processing_main() -> None:
         3. Downloads previously tagged bills from S3.
         4. Fetches only new/unprocessed bills (deduplicating against known hashes).
         5. Applies SDG tags to the new bills.
-        6. Uploads the combined updated dataset back to S3.
+        6. Appends historically tagged bills and uploads to S3.
     """
     # Load Legiscan API key from Prefect secret store
     legiscan_api_key = await Secret.load("legiscan-api-key")

@@ -1,4 +1,4 @@
-# SDG Bill Tracking
+# SDG Bill Tagging Flow
 
 An automated pipeline that fetches US federal legislative bills from the [Legiscan API](https://legiscan.com/legiscan), tags them against the [UN Sustainable Development Goals (SDGs)](https://sdgs.un.org/goals) using semantic similarity, and stores the results in S3. The pipeline is orchestrated with [Prefect](https://www.prefect.io/).
 
@@ -6,7 +6,7 @@ An automated pipeline that fetches US federal legislative bills from the [Legisc
 
 ## Overview
 
-Bills are tagged by comparing their title and description against the text of SDG targets using sentence embeddings and cosine similarity. Tags are assigned where similarity exceeds a configurable threshold, allowing each bill to be linked to one or more SDGs and their specific targets.
+Bills are tagged using the semantic similarity of the bill description against an AI-generated corpus of sample text relating to each SDG. Tags are assigned where similarity exceeds a configurable threshold, allowing each bill to be linked to the most relevant theme within an SDG.
 
 Previously tagged bills are cached in S3 and skipped on subsequent runs, so only new or updated datasets are processed.
 
@@ -27,7 +27,7 @@ fetch_legiscan_datasets()         # Download & parse bill JSON files from each s
      │
      No
      ▼
-tag_new_bills()                   # Embed bills + SDG targets, assign tags via cosine similarity
+tag_new_bills()                   # Embed bills + SDG themes, assign tags via cosine similarity
      │
      ▼
 bill_tagging_main()               # Merge new + existing tagged bills
@@ -40,7 +40,7 @@ S3 (tagged_bills.csv)             # Persist results
 
 **`legiscan_utils.py`** — Handles all communication with the Legiscan API. Fetches the list of available session datasets for the current year, downloads each session as a base64-encoded zip, and parses the bill JSON files within.
 
-**`bill_tagging_utils.py`** — Contains the tagging logic. Bills are encoded using [`all-MiniLM-L12-v1`](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v1) and compared against SDG target embeddings via cosine similarity. The top-k targets above a minimum threshold are assigned as tags.
+**`bill_tagging_utils.py`** — Contains the tagging logic. Bills are encoded using [`all-MiniLM-L12-v1`](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v1) and compared against SDG thematic text embeddings via cosine similarity.
 
 **`s3_utils.py`** — Thin wrapper around S3 for reading and writing the tagged bills cache.
 
