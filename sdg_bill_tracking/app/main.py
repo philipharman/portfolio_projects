@@ -1,43 +1,17 @@
-import pandas as pd
 import streamlit as st
-import ast
+from data_loads import load_sdgs, load_format_tagged_bills
+from ui import tab_home, tab_issues, tab_legislators
 
-@st.cache_data(show_spinner=False)
-def load_sdgs():
-    sdgs = pd.read_csv('https://portfolio-project-files.s3.eu-west-1.amazonaws.com/sdg-bill-tracking/sdg_theme_corpus.csv')
-    sdgs['sdg_number_title'] = sdgs.apply(lambda row: ' - '.join([str(row['sdg_number']), row['sdg_title']]), axis=1)
-    return sdgs
-
-
-@st.cache_data(show_spinner=False)
-def load_format_tagged_bills():
-    bills = pd.read_csv('https://portfolio-project-files.s3.eu-west-1.amazonaws.com/sdg-bill-tracking/tagged_bills.csv')
-    bills['sponsors'] = bills['sponsors'].apply(lambda x: ast.literal_eval(x))
-    bills['sdg_number_title'] = bills.apply(lambda row: ' - '.join([str(int(row['sdg_number'])), row['sdg_title']]) if type(row['sdg_title']) is str else None, axis=1)
-    return bills
+page_title = "SDG Policy Monitor"
+st.set_page_config(
+    page_title=page_title,
+    page_icon="🏛️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 
-def build_sdg_filters(sdgs):
-    sdg_options = sdgs['sdg_number_title'].unique()
-    theme_options = sdgs['theme'].unique()
-    c1, c2 = st.columns(2)
-    with c1:
-        selected_sdgs = st.multiselect(label="Select SDG(s):", options = sdg_options)
-    with c2:
-        if selected_sdgs:
-            theme_options = sdgs[sdgs.sdg_number_title.isin(selected_sdgs)]['theme'].unique()
-        selected_themes = st.multiselect(label="Select theme(s):", options = theme_options)
-    return selected_sdgs, selected_themes
 
-
-def apply_sdg_filter(bills, selected_sdgs, selected_themes):
-    bills_filtered = bills.copy()
-    if selected_sdgs:
-        bills_filtered = bills_filtered[bills_filtered.sdg_number_title.isin(set(selected_sdgs))]
-    if selected_themes:
-        bills_filtered = bills_filtered[bills_filtered.sdg_theme.isin(set(selected_themes))]
-
-    return bills_filtered
 
 
 def main():
@@ -47,15 +21,19 @@ def main():
     bills = load_format_tagged_bills()
 
     # Header
-    st.header('SDG Tracking')
-    st.dataframe(sdgs)
+    st.header(page_title)
+    st.caption("Tracking U.S. legislation through the lens of the UN Sustainable Development Goals")
 
-    # SDG / theme filter
-    selected_sdgs, selected_themes = build_sdg_filters(sdgs)
+    # Tabs
+    tab_names = ['Home', 'Explore Issues', 'Explore Legislators']
+    tabs = st.tabs(tab_names)
+    with tabs[0]:
+        tab_home.render_tab(sdgs)
+    with tabs[1]:
+        tab_issues.render_tab(sdgs, bills)
+    with tabs[2]:
+        pass
 
-    # Apply filter
-    bills_filtered = apply_sdg_filter(bills, selected_sdgs, selected_themes)
-    st.dataframe(bills_filtered)
 
 
 
